@@ -54,9 +54,6 @@ void setup() {
   digitalWrite(RFM_SWITCH, 1);
   LoRa.setTxPower(20, PA_OUTPUT_PA_BOOST_PIN);
   LoRa.setPreambleLength(8);
-  LoRa.setSpreadingFactor(7);
-  LoRa.setSignalBandwidth(125E3);
-  LoRa.setCodingRate4(5);
   setupLoRandom();
   Serial.println("[o]");
   pinMode(PIN_PA28, OUTPUT);

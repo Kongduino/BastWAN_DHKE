@@ -1,3 +1,6 @@
+#define RegOpMode 0x01
+#define RegModemConfig1 0x1D
+#define RegModemConfig2 0x1E
 #define RegRssiWideband 0x2C
 
 void writeRegister(uint8_t reg, uint8_t value);
@@ -5,9 +8,9 @@ uint8_t readRegister(uint8_t reg);
 // Provide your own functions, which will depend on your library
 
 void setupLoRandom() {
-  writeRegister(0x01, 0b10001101);
-  writeRegister(0x1D, 0b01110010);
-  writeRegister(0x1E, 0b01110000);
+  writeRegister(RegOpMode, 0b10001101);
+  writeRegister(RegModemConfig1, 0b01110010);
+  writeRegister(RegModemConfig2, 0b01110000);
 }
 
 uint8_t getLoRandomByte() {
