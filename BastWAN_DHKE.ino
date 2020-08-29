@@ -7,8 +7,8 @@
 #include "DHKE.h"
 #include <SPI.h>
 #include <LoRa.h>
+#include "LoRandom.h"
 
-#define RegRssiWideband 0x2C
 
 /*
   SX1276 Register (address)     Register bit field (bit #)      Values    Note
@@ -26,9 +26,17 @@
   at the receiver input and the LSB of this value constantly and randomly changes.
 */
 
+void writeRegister(uint8_t reg, uint8_t value) {
+  LoRa.writeRegister(reg, value);
+}
+
+uint8_t readRegister(uint8_t reg) {
+  return LoRa.readRegister(reg);
+}
+
 void setup() {
   Serial.begin(115200);
-  delay(1000);
+  delay(2000);
   Serial.flush();
   Serial.print(F("\n\n\n[SX1276] Initializing ... "));
   delay(1000);
@@ -46,14 +54,11 @@ void setup() {
   digitalWrite(RFM_SWITCH, 1);
   LoRa.setTxPower(20, PA_OUTPUT_PA_BOOST_PIN);
   LoRa.setPreambleLength(8);
-  LoRa.writeRegister(0x01, 0b10001101);
-  LoRa.writeRegister(0x1D, 0b01110010);
-  LoRa.writeRegister(0x1E, 0b01110000);
-  //  LoRa.setSpreadingFactor(7);
-  //  LoRa.setSignalBandwidth(125E3);
-  //  LoRa.setCodingRate4(5);
+  LoRa.setSpreadingFactor(7);
+  LoRa.setSignalBandwidth(125E3);
+  LoRa.setCodingRate4(5);
+  setupLoRandom();
   Serial.println("[o]");
-  delay(1000);
   pinMode(PIN_PA28, OUTPUT);
   digitalWrite(PIN_PA28, HIGH);
   Serial.println("End of setup\n\n");
@@ -72,14 +77,9 @@ void setup() {
   Serial.println(x, HEX);
 
   Serial.println("\nBuilding a stock of random numbers:");
-  uint16_t i, j;
+  uint16_t i;
   for (i = 0; i < 256; i++) {
-    uint8_t x = 0;
-    for (j = 0; j < 8; j++) {
-      x += (LoRa.readRegister(RegRssiWideband) & 0b00000001);
-      x = x << 1;
-      delay(1);
-    }
+    uint8_t x = getLoRandomByte();
     randomStock[i] = x;
   }
   randomIndex = 0;
