@@ -13,3 +13,8 @@ It relies on 3 libraries, which are included in the code:
   uint8_t readRegister(uint8_t reg);
   ```
 You need to call `void setupLoRandom()` at startup, and `uint8_t getLoRandomByte()` when you need a random byte. This code creates a stock of 256 bytes at startup to make things easier. Remember you need to reset LoRa settings when you need RNG...
+
+## Update 2020/08/30
+
+This version adds CBC encryption to the mix. You can now choose between ECB and CBC, and the code handles the IV from the `randomStock` array.
+
