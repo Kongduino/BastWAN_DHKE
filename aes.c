@@ -196,7 +196,6 @@ static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key) {
 void AES_init_ctx(struct AES_ctx* ctx, const uint8_t* key) {
   KeyExpansion(ctx->RoundKey, key);
 }
-#if (defined(CBC) && (CBC == 1)) || (defined(CTR) && (CTR == 1))
 void AES_init_ctx_iv(struct AES_ctx* ctx, const uint8_t* key, const uint8_t* iv) {
   KeyExpansion(ctx->RoundKey, key);
   memcpy (ctx->Iv, iv, AES_BLOCKLEN);
@@ -204,7 +203,6 @@ void AES_init_ctx_iv(struct AES_ctx* ctx, const uint8_t* key, const uint8_t* iv)
 void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv) {
   memcpy (ctx->Iv, iv, AES_BLOCKLEN);
 }
-#endif
 
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
@@ -294,7 +292,6 @@ static uint8_t Multiply(uint8_t x, uint8_t y) {
 
 #endif
 
-#if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
 // Please use the references to gain more information.
@@ -346,7 +343,6 @@ static void InvShiftRows(state_t* state) {
   (*state)[2][3] = (*state)[3][3];
   (*state)[3][3] = temp;
 }
-#endif // #if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
 
 // Cipher is the main function that encrypts the plaintext.
 static void Cipher(state_t* state, const uint8_t* RoundKey) {
@@ -370,7 +366,6 @@ static void Cipher(state_t* state, const uint8_t* RoundKey) {
   AddRoundKey(Nr, state, RoundKey);
 }
 
-#if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
 static void InvCipher(state_t* state, const uint8_t* RoundKey) {
   uint8_t round = 0;
   // Add the First round key to the state before starting the rounds.
@@ -389,13 +384,10 @@ static void InvCipher(state_t* state, const uint8_t* RoundKey) {
     InvMixColumns(state);
   }
 }
-#endif // #if (defined(CBC) && CBC == 1) || (defined(ECB) && ECB == 1)
 
 /*****************************************************************************/
 /* Public functions:                                                         */
 /*****************************************************************************/
-#if defined(ECB) && (ECB == 1)
-
 void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf) {
   // The next function call encrypts the PlainText with the Key using AES algorithm.
   Cipher((state_t*)buf, ctx->RoundKey);
@@ -405,10 +397,6 @@ void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf) {
   // The next function call decrypts the PlainText with the Key using AES algorithm.
   InvCipher((state_t*)buf, ctx->RoundKey);
 }
-
-#endif // #if defined(ECB) && (ECB == 1)
-
-#if defined(CBC) && (CBC == 1)
 
 static void XorWithIv(uint8_t* buf, const uint8_t* Iv) {
   uint8_t i;
@@ -443,10 +431,6 @@ void AES_CBC_decrypt_buffer(struct AES_ctx* ctx, uint8_t* buf,  uint32_t length)
   }
 }
 
-#endif // #if defined(CBC) && (CBC == 1)
-
-#if defined(CTR) && (CTR == 1)
-
 /*
   Symmetrical operation:
   same function for encrypting as for decrypting. Note any IV/nonce should never be reused with the same key
@@ -475,5 +459,3 @@ void AES_CTR_xcrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, uint32_t length) {
     buf[i] = (buf[i] ^ buffer[bi]);
   }
 }
-
-#endif // #if defined(CTR) && (CTR == 1)

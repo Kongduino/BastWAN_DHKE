@@ -1,7 +1,8 @@
-using namespace std;
-#define CBC 1
-#define CTR 1
+#define CBC 0
 #define ECB 1
+
+uint8_t myMode = CBC;
+
 #include "aes.c"
 
 unsigned char randomStock[256];
@@ -65,6 +66,7 @@ uint64_t randomint64() {
     uint8_t x = randomStock[randomIndex++];
     a = (a << 8) | x;
   }
+  randomIndex += 8;
   return a;
 }
 
@@ -152,6 +154,7 @@ buddy::buddy() {
   // We need 32 bytes, ie 256 bits, for AES-256
   Serial.println("In buddy init...");
   memcpy(PrivateKey.oneChunk, randomStock + randomIndex, 32);
+  randomIndex += 32;
   uint8_t i = 0;
   PublicKey.fourNumbers[i] = power(G, PrivateKey.fourNumbers[i]);
   i++;
@@ -177,17 +180,36 @@ uint16_t buddy::encrypt(unsigned char *what, uint16_t myLen, buddy Bob, char *x)
   memcpy(encBuf, what, myLen);
   Serial.println("\nencBuf, normalized:");
   hexDump((unsigned char*)encBuf, len);
-  uint8_t rounds = len / 16, steps = 0;
-  printf("%u block(s) to encrypt\n", rounds);
   struct AES_ctx ctx;
-  AES_init_ctx(&ctx, SecretKey.oneChunk);
-  for (uint8_t ix = 0; ix < rounds; ix++) {
-    // uint8_t rslt = esp_aes_hw_multiple_blocks(ESP_AES_ENCRYPT, (unsigned char*)SecretKey.oneChunk, (unsigned char*)encBuf, (unsigned char*)pktBuf, len);
-    //void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
-    AES_ECB_encrypt(&ctx, (uint8_t*)encBuf + steps);
-    steps += 16;
-    // encrypts in place, 16 bytes at a time
+  double t0, t1;
+  if (myMode == CBC) {
+    Serial.println("CBC mode");
+    uint8_t iv[16];
+    // IVs should be unique. Repeat. IVs should be unique.
+    memcpy(iv, randomStock + randomIndex, 16);
+    // let's keep randomIndex at the same spot: we're gonna reuse it with decrypt
+    Serial.print("iv at offset: ");
+    Serial.println(randomIndex);
+    hexDump((unsigned char*)iv, 16);
+    t0 = millis();
+    AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
+    AES_CBC_encrypt_buffer(&ctx, (uint8_t*)encBuf, len);
+    t1 = millis();
+  } else {
+    Serial.println("ECB mode");
+    uint8_t rounds = len / 16, steps = 0;
+    printf("%u block(s) to encrypt\n", rounds);
+    t0 = millis();
+    AES_init_ctx(&ctx, SecretKey.oneChunk);
+    for (uint8_t ix = 0; ix < rounds; ix++) {
+      //void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
+      AES_ECB_encrypt(&ctx, (uint8_t*)encBuf + steps);
+      steps += 16;
+      // encrypts in place, 16 bytes at a time
+    }
+    t1 = millis();
   }
+  Serial.println("Time: " + String(t1 - t0) + " ms");
   Serial.println("\nencBuf, encrypted:");
   hexDump((unsigned char*)encBuf, len);
   array2hex((uint8_t*)encBuf, len, x);
@@ -205,16 +227,37 @@ void buddy::decrypt(unsigned char *what, size_t myLen, buddy Bob, unsigned char 
   uint16_t olen = myLen / 2;
   Serial.println("\nencBuf, hex decoded:");
   hexDump((unsigned char*)encBuf, olen);
-  uint8_t rounds = olen / 16, steps = 0;
   struct AES_ctx ctx;
-  AES_init_ctx(&ctx, SecretKey.oneChunk);
-  for (uint8_t ix = 0; ix < rounds; ix++) {
-    // uint8_t rslt = esp_aes_hw_multiple_blocks(ESP_AES_DECRYPT, (unsigned char*)SecretKey.oneChunk, (unsigned char*)encBuf, (unsigned char*)finalArray, olen);
-    // void AES_ECB_decrypt(const struct AES_ctx* ctx, uint8_t* buf);
-    AES_ECB_decrypt(&ctx, (uint8_t*)encBuf + steps);
-    steps += 16;
-    // decrypts in place, 16 bytes at a time
+  double t0, t1;
+  if (myMode == CBC) {
+    Serial.println("CBC mode");
+    uint8_t iv[16];
+    // IVs should be unique. Repeat. IVs should be unique.
+    memcpy(iv, randomStock + randomIndex, 16);
+    // We're reusing randomIndex from encrypt
+    Serial.print("iv at offset: ");
+    Serial.println(randomIndex);
+    hexDump((unsigned char*)iv, 16);
+    t0 = millis();
+    AES_init_ctx(&ctx, SecretKey.oneChunk);
+    AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
+    AES_CBC_decrypt_buffer(&ctx, (uint8_t*)encBuf, olen);
+    t1 = millis();
+    AES_init_ctx(&ctx, SecretKey.oneChunk);
+  } else {
+    Serial.println("ECB mode");
+    t0 = millis();
+    AES_init_ctx(&ctx, SecretKey.oneChunk);
+    uint8_t rounds = olen / 16, steps = 0;
+    for (uint8_t ix = 0; ix < rounds; ix++) {
+      //void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf);
+      AES_ECB_decrypt(&ctx, (uint8_t*)encBuf + steps);
+      steps += 16;
+      // encrypts in place, 16 bytes at a time
+    }
+    t1 = millis();
   }
+  Serial.println("Time: " + String(t1 - t0) + " ms");
   Serial.println("\nencBuf, decrypted:");
   hexDump((unsigned char*)encBuf, olen);
 }
