@@ -90,17 +90,32 @@ void setup() {
   Serial.println("\nSetting up Bob");
   BigKey BobPublic;
   buddy Bob;
+  myMode = ECB;
   for (uint8_t i = 0; i < 4; i++) hexDump64(BobPublic.fourNumbers[i]);
-  Serial.println("\nThis is an encryption and decryption test...");
-  String pkt = "This is an encryption and decryption test...";
+  Serial.println("\nThis is an ECB encryption and decryption test...");
+  String pkt = "This is an ECB encryption and decryption test...";
   uint16_t len = pkt.length() + 1;
   // +1 = don't forget to account for the '\0' at the end...
   unsigned char pktBuf[256];
+  char finalArray[256];
   pkt.toCharArray((char *)pktBuf, len);
   Serial.println("Size of message packet: " + String(len));
   Serial.println("\nEncryption with Alice's private key and Bob's public key.");
-  char finalArray[256];
   size_t olen = Alice.encrypt((unsigned char*)pktBuf, len, Bob, finalArray);
+  //encBuf contains the message, encrypted and Base64-encoded, length olen
+  Serial.println("finalArray:");
+  hexDump((unsigned char*)finalArray, olen);
+  Serial.println("\nDecryption with Bob's private key and Alice's public key.");
+  Bob.decrypt((unsigned char *)finalArray, olen, Alice, pktBuf);
+  myMode = CBC;
+  Serial.println("\nThis is a CBC encryption and decryption test...");
+  pkt = "This is a CBC encryption and decryption test...";
+  len = pkt.length() + 1;
+  // +1 = don't forget to account for the '\0' at the end...
+  pkt.toCharArray((char *)pktBuf, len);
+  Serial.println("Size of message packet: " + String(len));
+  Serial.println("\nEncryption with Alice's private key and Bob's public key.");
+  olen = Alice.encrypt((unsigned char*)pktBuf, len, Bob, finalArray);
   //encBuf contains the message, encrypted and Base64-encoded, length olen
   Serial.println("finalArray:");
   hexDump((unsigned char*)finalArray, olen);
