@@ -223,8 +223,8 @@ void buddy::decrypt(unsigned char *what, size_t myLen, buddy Bob, unsigned char 
   // First we need to compute the SecretKey between my PrivateKey and Bob's PublicKey
   // Then we decrypt the message
   memcpy(finalArray, what, myLen);
-  Serial.println("\nfinalArray, as received:");
-  hexDump((unsigned char*)finalArray, myLen);
+  //  Serial.println("\nfinalArray, as received:");
+  //  hexDump((unsigned char*)finalArray, myLen);
   hex2array(finalArray, (unsigned char*)encBuf, myLen);
   uint16_t olen = myLen / 2;
   Serial.println("\nencBuf, hex decoded:");
