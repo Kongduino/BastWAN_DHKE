@@ -22,3 +22,10 @@ uint8_t getLoRandomByte() {
   }
   return x;
 }
+
+void fillRandom(unsigned char *x, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    x[i] = getLoRandomByte();
+  }
+}

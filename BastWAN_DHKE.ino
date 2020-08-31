@@ -74,13 +74,12 @@ void setup() {
   Serial.println(x, HEX);
 
   Serial.println("\nBuilding a stock of random numbers:");
-  uint16_t i;
-  for (i = 0; i < 256; i++) {
-    uint8_t x = getLoRandomByte();
-    randomStock[i] = x;
-  }
-  randomIndex = 0;
+  fillRandom(randomStock, 256);
   hexDump(randomStock, 256);
+  Serial.println("\nMy UUID:");
+  array2hex(randomStock, 16, myUUID, 4);
+  hexDump((unsigned char*)myUUID, 36);
+  randomIndex = 16;
 
   Serial.println("The value of P:"); hexDump64(P);
   Serial.println("The value of G:"); hexDump64(G);
@@ -92,8 +91,8 @@ void setup() {
   buddy Bob;
   myMode = ECB;
   for (uint8_t i = 0; i < 4; i++) hexDump64(BobPublic.fourNumbers[i]);
-  Serial.println("\nThis is an ECB encryption and decryption test...");
-  String pkt = "This is an ECB encryption and decryption test...";
+  String pkt = "This is ån ECB éncryption and dècryption test...";
+  Serial.println("\n" + pkt);
   uint16_t len = pkt.length() + 1;
   // +1 = don't forget to account for the '\0' at the end...
   unsigned char pktBuf[256];
@@ -107,9 +106,10 @@ void setup() {
   hexDump((unsigned char*)finalArray, olen);
   Serial.println("\nDecryption with Bob's private key and Alice's public key.");
   Bob.decrypt((unsigned char *)finalArray, olen, Alice, pktBuf);
+  Serial.println((char*)pktBuf);
   myMode = CBC;
-  Serial.println("\nThis is a CBC encryption and decryption test...");
-  pkt = "This is a CBC encryption and decryption test...";
+  pkt = "This is à CBC êncryption and dëcryption test...";
+  Serial.println("\n" + pkt);
   len = pkt.length() + 1;
   // +1 = don't forget to account for the '\0' at the end...
   pkt.toCharArray((char *)pktBuf, len);
@@ -121,6 +121,26 @@ void setup() {
   hexDump((unsigned char*)finalArray, olen);
   Serial.println("\nDecryption with Bob's private key and Alice's public key.");
   Bob.decrypt((unsigned char *)finalArray, olen, Alice, pktBuf);
+  Serial.println((char*)pktBuf);
+  randomIndex += 16;
+  // Now that we have encrypted AND decrypted, we can increment the randomIndex pointer.
+  // This is not sustainable though. It'd be better to save the iv before encryption.
+  // Just sayin'...
+  myMode = CTR;
+  pkt = "This is à CTR ęncryption and dēcryption tėst...";
+  Serial.println("\n" + pkt);
+  len = pkt.length() + 1;
+  // +1 = don't forget to account for the '\0' at the end...
+  pkt.toCharArray((char *)pktBuf, len);
+  Serial.println("Size of message packet: " + String(len));
+  Serial.println("\nEncryption with Alice's private key and Bob's public key.");
+  olen = Alice.encrypt((unsigned char*)pktBuf, len, Bob, finalArray);
+  //encBuf contains the message, encrypted and Base64-encoded, length olen
+  Serial.println("finalArray:");
+  hexDump((unsigned char*)finalArray, olen);
+  Serial.println("\nDecryption with Bob's private key and Alice's public key.");
+  Bob.decrypt((unsigned char *)finalArray, olen, Alice, pktBuf);
+  Serial.println((char*)pktBuf);
 }
 
 void loop() {

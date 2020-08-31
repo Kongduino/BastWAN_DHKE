@@ -1,5 +1,6 @@
 #define CBC 0
-#define ECB 1
+#define CTR 1
+#define ECB 2
 
 uint8_t myMode = CBC;
 
@@ -8,6 +9,7 @@ uint8_t myMode = CBC;
 unsigned char randomStock[256];
 // We'll build a stock of random bytes for use in code
 uint8_t randomIndex = 0;
+char myUUID[36];
 
 void hexDump(unsigned char *buf, uint16_t len) {
   String s = "|", t = "| |";
@@ -85,26 +87,21 @@ char oneHalfByte(uint8_t c) {
   else return ((char)c + 87);
 }
 
-void array2hex(BigKey *bk, size_t sLen, char *x) {
-  size_t i, len, n = 0;
-  const char * hex = "0123456789ABCDEF";
-  for (i = 0; i < sLen; ++i) {
-    x[n++] = hex[(bk->oneChunk[i] >> 4) & 0xF];
-    x[n++] = hex[bk->oneChunk[i] & 0xF];
-  }
-  x[n++] = 0;
-  //Serial.println(x);
-}
-
-void array2hex(uint8_t *buf, size_t sLen, char *x) {
+void array2hex(uint8_t *buf, size_t sLen, char *x, uint8_t dashFreq = 0) {
   size_t i, len, n = 0;
   const char * hex = "0123456789ABCDEF";
   for (i = 0; i < sLen; ++i) {
     x[n++] = hex[(buf[i] >> 4) & 0xF];
     x[n++] = hex[buf[i] & 0xF];
+    if (dashFreq > 0 && i != sLen - 1) {
+      if ((i + 1) % dashFreq == 0) x[n++] = '-';
+    }
   }
   x[n++] = 0;
-  //  Serial.println(x);
+}
+
+void array2hex(BigKey *bk, size_t sLen, char *x) {
+  array2hex((uint8_t *)bk->oneChunk, sLen, x);
 }
 
 void hex2array(uint8_t *src, uint8_t *dst, size_t sLen) {
@@ -112,29 +109,20 @@ void hex2array(uint8_t *src, uint8_t *dst, size_t sLen) {
   for (i = 0; i < sLen; i += 2) {
     uint8_t x, c;
     c = src[i];
-    if (c > 0x39) c -= 55;
-    else c -= 0x30;
-    x = c << 4;
-    c = src[i + 1];
-    if (c > 0x39) c -= 55;
-    else c -= 0x30;
-    dst[n++] = (x + c);
+    if (c != '-') {
+      if (c > 0x39) c -= 55;
+      else c -= 0x30;
+      x = c << 4;
+      c = src[i + 1];
+      if (c > 0x39) c -= 55;
+      else c -= 0x30;
+      dst[n++] = (x + c);
+    }
   }
 }
 
 void hex2array(uint8_t *src, BigKey *bk, size_t sLen) {
-  size_t i, n = 0;
-  for (i = 0; i < sLen; i += 2) {
-    uint8_t x, c;
-    c = src[i];
-    if (c > 0x39) c -= 55;
-    else c -= 0x30;
-    x = c << 4;
-    c = src[i + 1];
-    if (c > 0x39) c -= 55;
-    else c -= 0x30;
-    bk->oneChunk[n++] = (x + c);
-  }
+  hex2array(src, bk->oneChunk, sLen);
 }
 
 class buddy {
@@ -195,6 +183,20 @@ uint16_t buddy::encrypt(unsigned char *what, uint16_t myLen, buddy Bob, char *x)
     AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
     AES_CBC_encrypt_buffer(&ctx, (uint8_t*)encBuf, len);
     t1 = millis();
+  } else if (myMode == CTR) {
+    Serial.println("CTR mode");
+    // void AES_CTR_xcrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, uint32_t length);
+    uint8_t iv[16];
+    // IVs should be unique. Repeat. IVs should be unique.
+    memcpy(iv, randomStock + randomIndex, 16);
+    // We're reusing randomIndex from encrypt
+    Serial.print("iv at offset: ");
+    Serial.println(randomIndex);
+    hexDump((unsigned char*)iv, 16);
+    t0 = millis();
+    AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
+    AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)encBuf, len);
+    t1 = millis();
   } else {
     Serial.println("ECB mode");
     uint8_t rounds = len / 16, steps = 0;
@@ -239,11 +241,23 @@ void buddy::decrypt(unsigned char *what, size_t myLen, buddy Bob, unsigned char 
     Serial.println(randomIndex);
     hexDump((unsigned char*)iv, 16);
     t0 = millis();
-    AES_init_ctx(&ctx, SecretKey.oneChunk);
     AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
     AES_CBC_decrypt_buffer(&ctx, (uint8_t*)encBuf, olen);
     t1 = millis();
-    AES_init_ctx(&ctx, SecretKey.oneChunk);
+  } else if (myMode == CTR) {
+    Serial.println("CTR mode");
+    // void AES_CTR_xcrypt_buffer(struct AES_ctx* ctx, uint8_t* buf, uint32_t length);
+    uint8_t iv[16];
+    // IVs should be unique. Repeat. IVs should be unique.
+    memcpy(iv, randomStock + randomIndex, 16);
+    // We're reusing randomIndex from encrypt
+    Serial.print("iv at offset: ");
+    Serial.println(randomIndex);
+    hexDump((unsigned char*)iv, 16);
+    t0 = millis();
+    AES_init_ctx_iv(&ctx, SecretKey.oneChunk, iv);
+    AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)encBuf, olen);
+    t1 = millis();
   } else {
     Serial.println("ECB mode");
     t0 = millis();
@@ -260,6 +274,7 @@ void buddy::decrypt(unsigned char *what, size_t myLen, buddy Bob, unsigned char 
   Serial.println("Time: " + String(t1 - t0) + " ms");
   Serial.println("\nencBuf, decrypted:");
   hexDump((unsigned char*)encBuf, olen);
+  memcpy(finalArray, encBuf, olen);
 }
 
 void buddy::calculate(BigKey BobPublic) {
