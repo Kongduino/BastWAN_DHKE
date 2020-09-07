@@ -9,23 +9,6 @@
 #include <LoRa.h>
 #include "LoRandom.h"
 
-
-/*
-  SX1276 Register (address)     Register bit field (bit #)      Values    Note
-  RegOpMode (0x01)              LongRangeMode[7]                ‘1’       LoRa mode enable
-                                Mode[2:0]                       ‘101’     Receive Continuous mode
-  ------------------------------------------------------------------------------------------------------------------
-  RegModemConfig1 (0x1D)        Bw[7:4]                         ‘0111’    ‘0111’ for 125kHz modulation Bandwidth
-                                CodingRate[3:1]                 ‘001’     4/5 error coding rate
-                                ImplicitHeaderModeOn[0]         ‘0’       Packets have up-front header
-  ------------------------------------------------------------------------------------------------------------------
-  RegModemConfig2 (0x1E)        SpreadingFactor[7:4]            ‘0111’    ‘0111’ (SF7) = 6kbit/s
-
-  To generate an N bit random number, perform N read operation of the register RegRssiWideband (address 0x2c)
-  and use the LSB of the fetched value. The value from RegRssiWideband is derived from a wideband (4MHz) signal strength
-  at the receiver input and the LSB of this value constantly and randomly changes.
-*/
-
 void writeRegister(uint8_t reg, uint8_t value) {
   LoRa.writeRegister(reg, value);
 }
@@ -89,6 +72,7 @@ void setup() {
   Serial.println("\nSetting up Bob");
   BigKey BobPublic;
   buddy Bob;
+
   myMode = ECB;
   for (uint8_t i = 0; i < 4; i++) hexDump64(BobPublic.fourNumbers[i]);
   String pkt = "This is ån ECB éncryption and dècryption test...";
@@ -107,6 +91,7 @@ void setup() {
   Serial.println("\nDecryption with Bob's private key and Alice's public key.");
   Bob.decrypt((unsigned char *)finalArray, olen, Alice, pktBuf);
   Serial.println((char*)pktBuf);
+  
   myMode = CBC;
   pkt = "This is à CBC êncryption and dëcryption test...";
   Serial.println("\n" + pkt);
@@ -126,6 +111,7 @@ void setup() {
   // Now that we have encrypted AND decrypted, we can increment the randomIndex pointer.
   // This is not sustainable though. It'd be better to save the iv before encryption.
   // Just sayin'...
+  
   myMode = CTR;
   pkt = "This is à CTR ęncryption and dēcryption tėst...";
   Serial.println("\n" + pkt);

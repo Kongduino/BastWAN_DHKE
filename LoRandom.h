@@ -1,3 +1,19 @@
+/*
+  SX1276 Register (address)     Register bit field (bit #)      Values    Note
+  RegOpMode (0x01)              LongRangeMode[7]                ‘1’       LoRa mode enable
+                                Mode[2:0]                       ‘101’     Receive Continuous mode
+  ------------------------------------------------------------------------------------------------------------------
+  RegModemConfig1 (0x1D)        Bw[7:4]                         ‘0111’    ‘0111’ for 125kHz modulation Bandwidth
+                                CodingRate[3:1]                 ‘001’     4/5 error coding rate
+                                ImplicitHeaderModeOn[0]         ‘0’       Packets have up-front header
+  ------------------------------------------------------------------------------------------------------------------
+  RegModemConfig2 (0x1E)        SpreadingFactor[7:4]            ‘0111’    ‘0111’ (SF7) = 6kbit/s
+
+  To generate an N bit random number, perform N read operation of the register RegRssiWideband (address 0x2c)
+  and use the LSB of the fetched value. The value from RegRssiWideband is derived from a wideband (4MHz) signal strength
+  at the receiver input and the LSB of this value constantly and randomly changes.
+*/
+
 #define RegOpMode 0x01
 #define RegModemConfig1 0x1D
 #define RegModemConfig2 0x1E
